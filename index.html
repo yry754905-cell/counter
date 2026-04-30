@@ -2,19 +2,92 @@
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8">
-  <title>訪客計數器</title>
+  <title>訪客統計</title>
 
   <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
+  <style>
+    body {
+      margin: 0;
+      font-family: "Segoe UI", sans-serif;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: white;
+      text-align: center;
+    }
+
+    h1 {
+      margin-top: 40px;
+      font-size: 36px;
+      letter-spacing: 2px;
+    }
+
+    .container {
+      display: flex;
+      justify-content: center;
+      gap: 30px;
+      margin-top: 60px;
+      flex-wrap: wrap;
+    }
+
+    .card {
+      background: rgba(255,255,255,0.1);
+      backdrop-filter: blur(10px);
+      padding: 30px 40px;
+      border-radius: 20px;
+      width: 220px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+      transition: 0.3s;
+    }
+
+    .card:hover {
+      transform: translateY(-10px) scale(1.05);
+    }
+
+    .title {
+      font-size: 16px;
+      opacity: 0.8;
+      margin-bottom: 10px;
+    }
+
+    .number {
+      font-size: 32px;
+      font-weight: bold;
+    }
+
+    .footer {
+      margin-top: 80px;
+      opacity: 0.6;
+      font-size: 14px;
+    }
+  </style>
 </head>
 
 <body>
-  <h1>訪客統計</h1>
 
-  <p>總訪問：<span id="total">讀取中...</span></p>
-  <p>今日訪問：<span id="today">讀取中...</span></p>
-  <p>目前在線：<span id="online">讀取中...</span></p>
+  <h1>📊 訪客統計系統</h1>
+
+  <div class="container">
+    <div class="card">
+      <div class="title">總訪問</div>
+      <div class="number" id="total">...</div>
+    </div>
+
+    <div class="card">
+      <div class="title">今日訪問</div>
+      <div class="number" id="today">...</div>
+    </div>
+
+    <div class="card">
+      <div class="title">目前在線</div>
+      <div class="number" id="online">...</div>
+    </div>
+  </div>
+
+  <div class="footer">
+    Firebase Realtime Counter
+  </div>
 
   <script>
     const firebaseConfig = {
@@ -63,9 +136,26 @@
 
       ref.onSnapshot((doc) => {
         const d = doc.data();
-        totalEl.innerText = d.total;
-        todayEl.innerText = d.today;
+        animateValue(totalEl, d.total);
+        animateValue(todayEl, d.today);
       });
+    }
+
+    function animateValue(el, value) {
+      let start = parseInt(el.innerText) || 0;
+      let end = value;
+      let duration = 500;
+      let startTime = null;
+
+      function step(timestamp) {
+        if (!startTime) startTime = timestamp;
+        let progress = timestamp - startTime;
+        let percent = Math.min(progress / duration, 1);
+        el.innerText = Math.floor(start + (end - start) * percent);
+        if (percent < 1) requestAnimationFrame(step);
+      }
+
+      requestAnimationFrame(step);
     }
 
     async function online() {
@@ -88,5 +178,6 @@
     init();
     online();
   </script>
+
 </body>
 </html>
