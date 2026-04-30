@@ -1,10 +1,15 @@
 <!DOCTYPE html>
-<!-- test -->
 <html>
 <head>
 <meta charset="utf-8">
+<title>Counter</title>
 </head>
+
 <body>
+<h1>計數器</h1>
+
+<p>總訪問：<span id="total"></span></p>
+<p>今日訪問：<span id="today"></span></p>
 
 <script>
 let total = localStorage.getItem("total") || 1000;
@@ -17,7 +22,8 @@ today++;
 localStorage.setItem("total", total);
 localStorage.setItem(todayKey, today);
 
-parent.postMessage(total + "," + today, "*");
+document.getElementById("total").innerText = total;
+document.getElementById("today").innerText = today;
 </script>
 
 </body>
