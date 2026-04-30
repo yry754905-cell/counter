@@ -1,183 +1,51 @@
-<!DOCTYPE html>
-<html lang="zh-TW">
-<head>
-  <meta charset="UTF-8">
-  <title>訪客統計</title>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getFirestore, doc, setDoc, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-  <!-- Firebase -->
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+// 🔥 你的 Firebase 設定（已幫你放好）
+const firebaseConfig = {
+  apiKey: "AIzaSyDLSMYAhB6xMspKK23WYULfehwwYIevvjE",
+  authDomain: "visitor-counter-6f0d6.firebaseapp.com",
+  projectId: "visitor-counter-6f0d6",
+  storageBucket: "visitor-counter-6f0d6.firebasestorage.app",
+  messagingSenderId: "157408478458",
+  appId: "1:157408478458:web:e2319f40c67906d6713543",
+  measurementId: "G-GCKZYT0RZ8"
+};
 
-  <style>
-    body {
-      margin: 0;
-      font-family: "Segoe UI", sans-serif;
-      background: linear-gradient(135deg, #667eea, #764ba2);
-      color: white;
-      text-align: center;
-    }
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
 
-    h1 {
-      margin-top: 40px;
-      font-size: 36px;
-      letter-spacing: 2px;
-    }
+// 🔥 產生唯一ID（每個人）
+const userId = localStorage.getItem("visitorId") || Math.random().toString(36).substr(2);
+localStorage.setItem("visitorId", userId);
 
-    .container {
-      display: flex;
-      justify-content: center;
-      gap: 30px;
-      margin-top: 60px;
-      flex-wrap: wrap;
-    }
+// 🔥 更新在線時間
+async function updateOnline() {
+  await setDoc(doc(db, "online", userId), {
+    time: Date.now()
+  });
+}
 
-    .card {
-      background: rgba(255,255,255,0.1);
-      backdrop-filter: blur(10px);
-      padding: 30px 40px;
-      border-radius: 20px;
-      width: 220px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-      transition: 0.3s;
-    }
+// 🔥 每5秒更新一次（心跳）
+setInterval(updateOnline, 5000);
+updateOnline();
 
-    .card:hover {
-      transform: translateY(-10px) scale(1.05);
-    }
+// 🔥 計算在線人數（60秒內）
+async function getOnlineCount() {
+  const now = Date.now();
+  const oneMinuteAgo = now - 60 * 1000;
 
-    .title {
-      font-size: 16px;
-      opacity: 0.8;
-      margin-bottom: 10px;
-    }
+  const q = query(
+    collection(db, "online"),
+    where("time", ">", oneMinuteAgo)
+  );
 
-    .number {
-      font-size: 32px;
-      font-weight: bold;
-    }
+  const snapshot = await getDocs(q);
+  document.getElementById("online").innerText = snapshot.size;
+}
 
-    .footer {
-      margin-top: 80px;
-      opacity: 0.6;
-      font-size: 14px;
-    }
-  </style>
-</head>
-
-<body>
-
-  <h1>📊 訪客統計系統</h1>
-
-  <div class="container">
-    <div class="card">
-      <div class="title">總訪問</div>
-      <div class="number" id="total">...</div>
-    </div>
-
-    <div class="card">
-      <div class="title">今日訪問</div>
-      <div class="number" id="today">...</div>
-    </div>
-
-    <div class="card">
-      <div class="title">目前在線</div>
-      <div class="number" id="online">...</div>
-    </div>
-  </div>
-
-  <div class="footer">
-    Firebase Realtime Counter
-  </div>
-
-  <script>
-    const firebaseConfig = {
-      apiKey: "AIzaSyDLSMYAhB6xMspKK23WYULfehwwYIevvjE",
-      authDomain: "visitor-counter-6f0d6.firebaseapp.com",
-      projectId: "visitor-counter-6f0d6",
-      storageBucket: "visitor-counter-6f0d6.firebasestorage.app",
-      messagingSenderId: "157408478458",
-      appId: "1:157408478458:web:e2319f40c67906d6713543",
-      measurementId: "G-GCKZYT0RZ8"
-    };
-
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
-
-    const totalEl = document.getElementById("total");
-    const todayEl = document.getElementById("today");
-    const onlineEl = document.getElementById("online");
-
-    const todayKey = new Date().toISOString().slice(0,10);
-
-    async function init() {
-      const ref = db.collection("stats").doc("global");
-
-      const doc = await ref.get();
-
-      if (!doc.exists) {
-        await ref.set({
-          total: 0,
-          today: 0,
-          date: todayKey
-        });
-      }
-
-      let data = (await ref.get()).data();
-
-      if (data.date !== todayKey) {
-        data.today = 0;
-        data.date = todayKey;
-      }
-
-      await ref.update({
-        total: data.total + 1,
-        today: data.today + 1
-      });
-
-      ref.onSnapshot((doc) => {
-        const d = doc.data();
-        animateValue(totalEl, d.total);
-        animateValue(todayEl, d.today);
-      });
-    }
-
-    function animateValue(el, value) {
-      let start = parseInt(el.innerText) || 0;
-      let end = value;
-      let duration = 500;
-      let startTime = null;
-
-      function step(timestamp) {
-        if (!startTime) startTime = timestamp;
-        let progress = timestamp - startTime;
-        let percent = Math.min(progress / duration, 1);
-        el.innerText = Math.floor(start + (end - start) * percent);
-        if (percent < 1) requestAnimationFrame(step);
-      }
-
-      requestAnimationFrame(step);
-    }
-
-    async function online() {
-      const id = Math.random().toString(36).substring(2);
-      const ref = db.collection("online").doc(id);
-
-      await ref.set({
-        time: new Date()
-      });
-
-      db.collection("online").onSnapshot((snap) => {
-        onlineEl.innerText = snap.size;
-      });
-
-      setInterval(() => {
-        ref.update({ time: new Date() });
-      }, 10000);
-    }
-
-    init();
-    online();
-  </script>
-
-</body>
-</html>
+// 🔥 每3秒刷新在線人數
+setInterval(getOnlineCount, 3000);
+getOnlineCount();
+</script>
