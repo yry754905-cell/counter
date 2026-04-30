@@ -1,31 +1,92 @@
 <!DOCTYPE html>
-<!-- refresh -->
-<html>
+<html lang="zh-TW">
 <head>
-<meta charset="utf-8">
-<title>Counter</title>
+  <meta charset="UTF-8">
+  <title>訪客計數器</title>
+
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 </head>
 
 <body>
-<h1>計數器</h1>
+  <h1>訪客統計</h1>
 
-<p>總訪問：<span id="total"></span></p>
-<p>今日訪問：<span id="today"></span></p>
+  <p>總訪問：<span id="total">讀取中...</span></p>
+  <p>今日訪問：<span id="today">讀取中...</span></p>
+  <p>目前在線：<span id="online">讀取中...</span></p>
 
-<script>
-let total = localStorage.getItem("total") || 1000;
-let todayKey = new Date().toISOString().slice(0,10);
-let today = localStorage.getItem(todayKey) || 0;
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyDLSMYAhB6xMspKK23WYULfehwwYIevvjE",
+      authDomain: "visitor-counter-6f0d6.firebaseapp.com",
+      projectId: "visitor-counter-6f0d6",
+      storageBucket: "visitor-counter-6f0d6.firebasestorage.app",
+      messagingSenderId: "157408478458",
+      appId: "1:157408478458:web:e2319f40c67906d6713543",
+      measurementId: "G-GCKZYT0RZ8"
+    };
 
-total++;
-today++;
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
 
-localStorage.setItem("total", total);
-localStorage.setItem(todayKey, today);
+    const totalEl = document.getElementById("total");
+    const todayEl = document.getElementById("today");
+    const onlineEl = document.getElementById("online");
 
-document.getElementById("total").innerText = total;
-document.getElementById("today").innerText = today;
-</script>
+    const todayKey = new Date().toISOString().slice(0,10);
 
+    async function init() {
+      const ref = db.collection("stats").doc("global");
+
+      const doc = await ref.get();
+
+      if (!doc.exists) {
+        await ref.set({
+          total: 0,
+          today: 0,
+          date: todayKey
+        });
+      }
+
+      let data = (await ref.get()).data();
+
+      if (data.date !== todayKey) {
+        data.today = 0;
+        data.date = todayKey;
+      }
+
+      await ref.update({
+        total: data.total + 1,
+        today: data.today + 1
+      });
+
+      ref.onSnapshot((doc) => {
+        const d = doc.data();
+        totalEl.innerText = d.total;
+        todayEl.innerText = d.today;
+      });
+    }
+
+    async function online() {
+      const id = Math.random().toString(36).substring(2);
+      const ref = db.collection("online").doc(id);
+
+      await ref.set({
+        time: new Date()
+      });
+
+      db.collection("online").onSnapshot((snap) => {
+        onlineEl.innerText = snap.size;
+      });
+
+      setInterval(() => {
+        ref.update({ time: new Date() });
+      }, 10000);
+    }
+
+    init();
+    online();
+  </script>
 </body>
 </html>
